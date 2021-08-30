@@ -1,4 +1,4 @@
-Require Import sniper.
+Require Import Sniper.
 Require Import List.
 Section airlock1.
 
@@ -66,96 +66,26 @@ Variable H0 : Provide ix DOORS H. *)
 Variable ω : Ω.
 Variable d : door.
 
- 
-
-(* TODO : doors_o_caller doit devenir une fonction dans bool
-corriger instanciate_type_tuple de manière à ce qu'il laisse 
-intact les lemmes qu'il n'a pas besoin d'instancier, et on peut forcer à ce que le type du type des paramètres 
-du tuple soit bien Prop *)
 
 
-Goal doors_o_caller ω bool (IsOpen d).
+Goal doors_o_caller2 ω bool (IsOpen d).
 Proof. 
+scope. Fail verit. (* TODO : pourquoi verit n'arrive pas à montrer true ??? *)
 
-Abort.
+constructor. Qed.
 
-Goal forall x: DOORS bool, x = IsOpen left.
-intro x. inversion x. admit. 
-assert (exists (x1 x2 : unit), x1 <> x2).
-rewrite H. exists true, false. discriminate.
-destruct H1. destruct H1. destruct x0. destruct x1. 
-elim H1. reflexivity.
-Abort.
+Variable helper : (sel d ω) = true. (* TODO : comment on obtient ce lemme ??? *)
 
-Goal True.
-epose (foo := ?[foo_evar] : Prop).
-instantiate (foo_evar := True). assert foo. exact I.
-exact I. Qed.
+Goal doors_o_caller2 ω unit (Toggle d).
+Proof. scope. scope. (*TODO : on scope deux fois *)
+Fail verit. rewrite helper. easy. Qed. 
 
-Goal forall H d x, doors_o_callee2 H bool (IsOpen d) x = Bool.eqb (sel d ω) x.
-Proof. 
-scope. Abort.
-
-Goal doors_o_caller2 ω (IsOpen d).
-Proof. snipe. admit. admit. admit. Admitted.
-
-
-
-
-
-
-
-(* TODO : problème avec le pattern matching quand le type de la variable sur laquelle on matche admet des indices 
-(ok pour les paramètres) *)
-
-Variable o_caller : doors_o_caller2 ω (IsOpen d).
-Variable x : bool.
-Variable o_caller0 : doors_o_callee2 ω (IsOpen d) x.
-Variable equ_cond : x = true.
-
-Goal doors_o_caller2 ω (Toggle d).
-Proof. scope.
-clear - o_caller0 H11 equ_cond.
-
- (* verit *) (* verit a bien trouvé la preuve mais le parser a un problème *)
-
-Admitted.
-
-(* TODO : Chantal *)
 
 Definition tog (d : door) (ω : Ω) : Ω :=
   match d with
   | left => (negb (fst ω), snd ω)
   | right => (fst ω, negb (snd ω))
   end.
-
-Variable H1 : doors_o_callee2 ω (IsOpen d) true.
-Variable x1 : unit.
-Variable H2 : doors_o_callee2 ω (Toggle d) x1.
-
-Goal sel d (tog d ω) = false.
-Proof. scope.
-
-
-
- assert (forall (H : Ω) (d : door) (H2 : bool),
-     doors_o_callee2 H (IsOpen d) H2 = Bool.eqb (sel d H) H2) by reflexivity.
-assert (forall (H : Ω) (d: door) (H2 : unit),
-     doors_o_callee2 H (Toggle d) H2 = true) by reflexivity.
-clear - H6 H7 H8 H9 H12 H13 H11. (* je crois qu'on a besoin d'une analyse de cas sur ω *)
-Admitted.
-
-
-Variable ω' : Ω.
-Variable Hyp : doors_o_callee2 ω' (IsOpen d) false.
-
-Goal sel d ω' = false.
-Proof. scope. clear - H9 Hyp. (* verit. *)
-
-specialize (H9 ω' d). specialize (H9 false). unfold is_true in Hyp.
-rewrite Hyp in H9. clear - H9. verit. admit. admit.
- (* Pourquoi verit n'a pas pu résoudre le but ??? *)
-Admitted.  
 
 
 End airlock1. 
