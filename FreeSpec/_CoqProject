@@ -1,0 +1,8 @@
+-I /home/louise/github.com/lthms/FreeSpec/master/_build/default/plugins/exec
+-I /home/louise/github.com/lthms/FreeSpec/master/_build/default/theories/FFI/
+-Q /home/louise/github.com/lthms/FreeSpec/master/_build/default/theories/Core FreeSpec.Core
+-Q /home/louise/github.com/lthms/FreeSpec/master/_build/default/theories/Exec FreeSpec.Exec
+-Q /home/louise/github.com/lthms/FreeSpec/master/_build/default/theories/FFI FreeSpec.FFI
+
+-arg -init-file
+-arg /home/louise/github.com/lthms/FreeSpec/master/build.v
