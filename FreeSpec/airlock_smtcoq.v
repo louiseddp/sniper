@@ -65,8 +65,8 @@ fun ω a D => match D with
 end.
 
 
-(* Variable H : MayProvide ix DOORS.
-Variable H0 : Provide ix DOORS H. *)
+Variable H : MayProvide ix DOORS.
+Variable H0 : Provide ix DOORS H.
 Variable ω : Ω.
 Variable d : door.
 
@@ -74,11 +74,8 @@ Variable d : door.
 
 Goal doors_o_caller2 ω bool (IsOpen d).
 Proof. 
-scope. clear - H4.
+snipe. admit. admit. admit. admit. Abort.
 
- Fail verit. (* TODO : pourquoi verit n'arrive pas à montrer true ??? *)
-
-constructor. Qed.
 
 (* Variable helper : (sel d ω) = true. *)
 
@@ -88,7 +85,8 @@ Variable x : bool.
 Variable eq_cond : x = true.
 Variable o_caller0 : doors_o_callee2 ω bool (IsOpen d) x. 
 Goal doors_o_caller2 ω unit (Toggle d).
-Proof. scope. rewrite H10 in o_caller0. unfold is_true in o_caller0. rewrite Bool.eqb_true_iff in o_caller0.
+Proof. scope. Fail verit.
+rewrite H12 in o_caller0. unfold is_true in o_caller0. rewrite Bool.eqb_true_iff in o_caller0.
 subst.
 rewrite o_caller0. 
  simpl. constructor. 
@@ -121,14 +119,40 @@ Definition close_door `{Provide ix DOORS} (d : door) : impure ix unit :=
   let* open := is_open d in
   when open (toggle d).
 
+Definition step (ω : Ω) (a : Type) (e : DOORS a) (x : a) :=
+  match e with
+  | Toggle d => tog d ω
+  | _ => ω
+  end.
 
-Lemma open_door_respectful `{Provide ix DOORS} (ω : Ω)
-    (d : door) (safe : sel (co d) ω = false)
-  : pre (to_hoare doors_contract (open_door (ix := ix) d)) ω.
+Definition doors_contract : contract DOORS Ω :=
+  make_contract step doors_o_caller doors_o_callee.
 
+Variable ix : interface.
+Variable H : MayProvide ix DOORS.
+Variable H0 : Provide ix DOORS. 
+Variable ω : Ω.
+Variable d : door.
+Variable safe : sel (co d) ω = false.
+
+Print MayProvide.
+
+Goal doors_o_caller2 ω bool (IsOpen d).
+Proof.
+interp_alg_types (MayProvide ix DOORS).
+
+
+
+def_fix_and_pattern_matching. unfold is_true. 
+
+ interp_alg_types_context_goal.
+ scope.
 
 Proof.
-  prove impure. repeat constructor; subst.
+  prove impure.
+scope.
+
+ repeat constructor; subst.
   inversion o_caller0; ssubst.
   now rewrite safe.
 Qed.

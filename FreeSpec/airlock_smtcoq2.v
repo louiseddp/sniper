@@ -157,7 +157,7 @@ Inductive doors_o_callee : Ω -> forall (a : Type), DOORS a -> a -> Prop :=
   : doors_o_callee ω unit (Toggle d) x.
 
 #[global] Hint Constructors doors_o_callee : airlock.
-
+About step.
 Definition doors_contract : contract DOORS Ω :=
   make_contract step doors_o_caller doors_o_callee.
 
