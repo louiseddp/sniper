@@ -194,7 +194,7 @@ Lemma open_door_respectful `{Provide ix DOORS} (ω : Ω)
   : pre (to_hoare doors_contract (open_door (ix := ix) d)) ω.
 
 Proof.
-  prove impure. repeat constructor; subst.
+  prove impure; repeat constructor; subst.
   inversion o_caller0; ssubst.
   now rewrite safe.
 Qed.

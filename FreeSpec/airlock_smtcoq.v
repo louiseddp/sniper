@@ -139,23 +139,80 @@ Print MayProvide.
 
 Goal doors_o_caller2 ω bool (IsOpen d).
 Proof.
-interp_alg_types (MayProvide ix DOORS).
+scope. (* TODO verit. *) 
+
+constructor.
+Qed.
+
+Variable o_caller : doors_o_caller2 ω bool (IsOpen d).
+Variable x : bool.
+Variable o_caller0 : doors_o_callee2 ω bool (IsOpen d) x.
+Variable equ_cond : x = false.
 
 
 
-def_fix_and_pattern_matching. unfold is_true. 
+Goal doors_o_caller2 ω unit (Toggle d).
+Proof. scope. rewrite H17 in o_caller0. unfold is_true in o_caller0. rewrite Bool.eqb_true_iff in o_caller0.
+subst. 
+rewrite equ_cond. rewrite safe. constructor. Qed.
 
- interp_alg_types_context_goal.
- scope.
+End airlock2.
+
+
+
+Inductive CONTROLLER : interface :=
+| Tick : CONTROLLER unit
+| RequestOpen (d : door) : CONTROLLER unit.
+
+Definition tick `{Provide ix CONTROLLER} : impure ix unit :=
+  request Tick.
+
+Definition request_open `{Provide ix CONTROLLER} (d : door) : impure ix unit :=
+  request (RequestOpen d).
+
+
+#[local] Opaque close_door.
+#[local] Opaque open_door.
+#[local] Opaque Nat.ltb.
+
+Definition controller `{Provide ix DOORS, Provide ix (STORE nat)}
+  : component CONTROLLER ix :=
+  fun _ op =>
+    match op with
+    | Tick =>
+      let* cpt := get in
+      when (15 <? cpt) begin
+        close_door left;;
+        close_door right;;
+        put 0
+      end
+    | RequestOpen d =>
+        close_door (co d);;
+        open_door d;;
+        put 0
+    end.
+
+Lemma controller_correct `{StrictProvide2 ix DOORS (STORE nat)}
+  : correct_component controller
+                      (no_contract CONTROLLER)
+                      doors_contract
+                      (fun _ ω => sel left ω = false \/ sel right ω = false).
 
 Proof.
-  prove impure.
-scope.
-
- repeat constructor; subst.
-  inversion o_caller0; ssubst.
-  now rewrite safe.
+  intros ωc ωd pred a e req.
+  assert (hpre : pre (to_hoare doors_contract (controller a e)) ωd)
+    by (destruct e; prove impure with airlock).
+  split; auto.
+  intros x ωj' run.
+  cbn.
+  split.
+  + auto with freespec.
+  + apply respectful_run_inv in run; auto.
 Qed.
+
+End airlock3. 
+
+
 
 
 
