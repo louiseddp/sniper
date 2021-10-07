@@ -22,28 +22,15 @@ Require Import utilities.
 Import ListNotations.
 
 
-
 (* Instanciate a hypothesis with the parameter x *)
 Ltac instanciate H x :=
   let T := type of H in
  lazymatch T  with
-  | forall (y : ?A), _ => tryif (let H':= fresh H "_" x in pose (H':= H) ; 
-let U := type of (H' x) in notHyp U ; specialize (H' x)) then idtac else (let H':= fresh H in pose (H':= H) ; 
+  | forall (y : ?A), _ => tryif (let H':= fresh H "_" x in assert (H':= H) ; 
+let U := type of (H' x) in notHyp U ; specialize (H' x)) then idtac else (let H':= fresh H in assert (H':= H) ; 
 let U := type of (H' x) in notHyp U ; specialize (H' x))
-  | _ => idtac "did not work"
+  | _ => fail
       end.
-
-
-
-(* Instanciate a hypothesis with the parameter x *)
-Ltac instanciate_all H x :=
-  let T := type of H in
- lazymatch T  with
-  | forall (y : ?A), _ => let H':= fresh H in pose (H':= H) ; 
-let U := type of (H' x) in notHyp U ; specialize (H' x); try (instanciate_all H' x)
-  | _ => idtac "did not work"
-      end.
-
 
 
 (* Instanciate a hypothesis with the parameter x and return its identifier *)
@@ -51,13 +38,16 @@ Ltac instanciate_ident H x :=
   let T := type of H in
  lazymatch T  with
   | forall (y : ?A), _ => let H':= fresh H in 
-let _ := match goal with _ => pose (H':= H) ; 
+let _ := match goal with _ => assert (H':= H) ; 
 let U := type of (H' x) in notHyp U ; specialize (H' x) end in H'
-  | _ => idtac "did not work"
+  | _ => fail
       end.
 
 
-
+Goal (forall (A : Type) (B : Type), A = A /\ B = B) ->  forall (x : nat) (y : bool), x=x /\ y= y.
+intro H.
+let H' := instanciate_ident H bool in instanciate H' bool.
+Abort.
 
 
 
@@ -65,132 +55,153 @@ let U := type of (H' x) in notHyp U ; specialize (H' x) end in H'
 Ltac is_type_quote t := let t' := eval hnf in t in let T :=
 metacoq_get_value (tmQuote t') in if_else_ltac idtac fail ltac:(eval compute in (is_type T)).
 
-(* instanciates a polymorphic quantified hypothesis with all suitable subterms in the context *)
-Ltac instanciate_type H := let P := type of H  in let P':= type of P in constr_eq P' Prop ; lazymatch P with
-    | forall (x : ?A), _ =>
-      let A' := eval hnf in A in 
-is_type_quote A' ; repeat match goal with 
-          |- context C[?y] => let Y := type of y in let Y' := eval hnf in 
-Y in is_type_quote Y' ; instanciate H y
-          end
+
+Ltac is_type_quote_bool t := let t' := eval hnf in t in let T :=
+metacoq_get_value (tmQuote t') in constr:(is_type T).
+
+
+Fixpoint list_of_subterms (t: term) : list term := match t with
+| tLambda _ Ty u => t :: (list_of_subterms Ty) ++ (list_of_subterms u)
+| tProd _ Ty u => t :: (list_of_subterms Ty) ++ (list_of_subterms u)
+| tLetIn _ u v w => t :: (list_of_subterms u) ++ (list_of_subterms v) ++ (list_of_subterms w)
+| tCast t1 _ t2 => t :: (list_of_subterms t1) ++ (list_of_subterms t2)
+| tApp u l => t :: (list_of_subterms u) ++ (List.flat_map list_of_subterms l)
+| tCase _ t1 t2 l => t:: (list_of_subterms t1) ++ (list_of_subterms t2) ++ 
+(List.flat_map (fun x => list_of_subterms (snd x)) l)
+| tFix l _  => t :: (List.flat_map (fun x => list_of_subterms (x.(dbody))) l)
+| tCoFix l _ => t :: (List.flat_map (fun x => list_of_subterms (x.(dbody))) l)
+| _ => [t]
 end.
 
-Ltac instanciate_type_all H := let P := type of H  in let P':= type of P in constr_eq P' Prop ; lazymatch P with
-    | forall (x : ?A), _ =>
-      let A' := eval hnf in A in 
-is_type_quote A' ; repeat match goal with 
-          |- context C[?y] => let Y := type of y in let Y' := eval hnf in 
-Y in is_type_quote Y' ; instanciate_all H y
-          end
+
+Definition filter_closed (l: list term) := List.filter (closedn 0) l.
+
+
+Ltac get_list_of_closed_subterms t := let t_reif := metacoq_get_value (tmQuote t) in 
+let l := eval cbv in (filter_closed (list_of_subterms t_reif)) in l. 
+
+
+Ltac return_unquote_tuple_terms l := let rec aux l acc :=
+match constr:(l) with
+| nil => constr:(acc)
+| cons ?x ?xs => 
+  let y := metacoq_get_value (tmUnquote x) in 
+  let u := constr:(y.(my_projT2)) in 
+  let w := eval hnf in u in
+  let T := type of w in 
+  let b0 := ltac:(is_type_quote_bool T) in 
+  let b := eval hnf in b0 in
+    match b with 
+    | true => (aux xs (pair w acc)) 
+    | false => aux xs acc
+    end
+end
+in aux l unit.
+
+Ltac return_tuple_subterms_of_type_type := match goal with
+|- ?x => let l0 := (get_list_of_closed_subterms x) in let l := eval cbv in l0 in return_unquote_tuple_terms l
 end.
 
 
+Goal forall (A: Type) (x:nat) (y: bool) (z : list A), y = y -> z=z -> x = x.
+let t := return_tuple_subterms_of_type_type in pose t.
+Abort.
 
-Goal (forall (A B C : Type), B = B -> C = C -> A = A) -> nat = nat.
-intros.
-instanciate_all H nat. clear H0 H1 H2.
-instanciate_type_all H.
+Goal forall (A : Type) (l : list A), Datatypes.length l = 0 -> l = nil.
+let t := return_tuple_subterms_of_type_type in pose t.
+Abort.
+
+Ltac instanciate_tuple_terms H t := match t with
+| (?x, ?t') => try (let H' := instanciate_ident H x in let u := type of H' in
+instanciate_tuple_terms H' t) ; try (instanciate_tuple_terms H t')
+| unit =>  let T := type of H in
+           match T with
+            | forall (y : ?A), _ => constr_eq A Type ; clear H
+            | _ => idtac
+            end
+end.
+
+Ltac instanciate_tuple_terms_goal H := let t0 := return_tuple_subterms_of_type_type in 
+let t := eval cbv in t0 in instanciate_tuple_terms H t.
+
+Goal (forall (A B C : Type), B = B -> C = C -> A = A) -> nat = nat -> bool = bool.
+intros H.
+let p := return_tuple_subterms_of_type_type in pose p.
+instanciate_tuple_terms_goal H.
 Abort.
 
 
+Ltac instanciate_tuple_terms_tuple_hyp t terms := match t with 
+| (?H, ?t') => instanciate_tuple_terms H terms ; instanciate_tuple_terms_tuple_hyp t' terms
+| unit => idtac
+end.
 
 
-
-(* when a hypothesis is of type id Q, replaces it by Q *)
-Ltac eliminate_id :=
-  match goal with
-    | H: ?P |- _ =>
-      lazymatch P with
-        | id ?Q => change P with Q in H
-        | _ => fail
+Ltac instanciate_tuple_terms_tuple_hyp_no_unit t terms := lazymatch t with 
+| (?t1, ?t2 ) => instanciate_tuple_terms_tuple_hyp_no_unit t1 terms ; 
+instanciate_tuple_terms_tuple_hyp_no_unit t2 terms
+| ?H => let T := type of H in 
+     match T with 
+  | forall (y : ?A), _ => constr_eq A Type ; try (instanciate_tuple_terms H terms)
+  | _ => try (let U := type of T in constr_eq U Prop ; notHyp H ; let H0 := fresh H in assert (H0 : T) by exact H)
   end
 end.
 
-(* fold on a context with the tactic instanciate_type *)
-Ltac specialize_context_aux :=
- match goal with
-  | H: ?P |- _ => lazymatch P with 
-                | id _ => fail 
-                | _ => instanciate_type H ; change P with (id P) in H
-             end
-          end.
+Ltac elimination_polymorphism t0 := 
+let t := eval cbv in t0 in 
+let terms0 := return_tuple_subterms_of_type_type in 
+let terms := eval cbv in terms0 in 
+let h0 := hyps in 
+let h := eval cbv in h0 in
+instanciate_tuple_terms_tuple_hyp_no_unit t terms ; 
+instanciate_tuple_terms_tuple_hyp h terms.
 
-Ltac specialize_context_aux_all :=
- match goal with
-  | H: ?P |- _ => lazymatch P with 
-                | id _ => fail 
-                | _ => instanciate_type_all H ; change P with (id P) in H
-             end
-          end.
+Ltac test t0 := 
+let t := eval cbv in t0 in 
+let h0 := hyps in 
+let h := eval cbv in h0 in
+let x := constr:((nat, (bool, unit))) in 
+instanciate_tuple_terms_tuple_hyp_no_unit t x ; 
+instanciate_tuple_terms_tuple_hyp h x.
 
-Ltac specialize_context_aux_clear :=
- match goal with
-  | H: ?P |- _ => lazymatch P with 
-                | id _ => fail 
-                | _ => instanciate_type H ; clear H
-             end
-          end.
-
-Ltac specialize_context_aux_clear_all :=
- match goal with
-  | H: ?P |- _ => lazymatch P with 
-                | id _ => fail 
-                | _ => instanciate_type_all H ; clear H
-             end
-          end.
+Ltac test2 t0 :=
+let h0 := hyps in
+let t := eval cbv in t0 in 
+let x := constr:((nat, (bool, unit))) in
+instanciate_tuple_terms_tuple_hyp_no_unit t0 x.
 
 
-Ltac specialize_context := repeat specialize_context_aux ; repeat eliminate_id.
-Ltac specialize_context_all := repeat specialize_context_aux_all ; repeat eliminate_id.
+Goal (forall (A B C : Type), B = B -> C = C -> A = A) -> nat = nat -> bool = bool.
+intro.
+elimination_polymorphism (rev_involutive, unit).
 
-Ltac specialize_context_clear := repeat specialize_context_aux_clear.
-Ltac specialize_context_clear_all := repeat specialize_context_aux_clear_all.
+Abort.
 
 
-(* A tactic to handle hypothesis in a list : the problem is that the user should hide the hypothesis 
-in a let in definition in order to type the function *)
-
-Ltac instanciate_type_list h := lazymatch h with
-| nil => idtac 
-| cons (let _ := ?hd in tt) ?h' => instanciate_type hd ; instanciate_type_list h'
-end.
-
-(* Another way to handle different hypothesis (more user-friendly) is to use tuples instead of lists *)
-
-Ltac instanciate_type_tuple t := match t with
-| pair ?a ?b => instanciate_type b ; instanciate_type_tuple a 
-| ?x => try (instanciate_type x)
-end.
-
-Ltac instanciate_type_tuple_all t := match t with
-| pair ?a ?b => try (instanciate_type_all b) ; instanciate_type_tuple_all a 
-| ?x => try (instanciate_type_all x)
-end.
+Tactic Notation "inst" := elimination_polymorphism unit.
+Tactic Notation "inst" constr(t) := elimination_polymorphism (t, unit).
 
 
 Goal (forall (A : Type) (a : A), a = a) -> (forall (x : nat), x = x).
-Proof. intros H. specialize_context_clear.
-Abort.
-
-Tactic Notation "inst" := specialize_context.
-Tactic Notation "inst" constr(t) := specialize_context ; instanciate_type_tuple t.
-
-Tactic Notation "inst_clear" := specialize_context_clear.
-Tactic Notation "inst_clear" constr(t) := instanciate_type_tuple t ; specialize_context_clear.
-
-Tactic Notation "inst_all" := specialize_context_all.
-Tactic Notation "inst_all" constr(t) := specialize_context_all ; instanciate_type_tuple_all t.
-
-Tactic Notation "inst_clear_all" := specialize_context_clear_all.
-Tactic Notation "inst_clear_all" constr(t) := instanciate_type_tuple_all t ; specialize_context_clear_all.
-
-
-Goal (forall (A : Type) (a : A), a = a) -> (forall (x : nat), x = x).
-Proof. intros H. inst_clear_all False. inst_clear app_length.
+Proof. intros H. inst app_length.
 
 Abort.
+
+Section test.
+
+Variable A : Type. 
+ Theorem nil_cons : forall (x:A) (l:list A), [] <> x :: l.
+  Proof.
+    intros. unfold "<>". intro H. inversion H.
+  Qed.
 
 Goal False -> forall (x : nat) (y : bool), x=x /\ y= y.
-inst pair_equal_spec. clear pair_equal_spec_nat.
-inst_clear_all (pair_equal_spec, false, app_length).
+inst (pair_equal_spec, app_length, nil_cons, app_comm_cons).
 Abort.
+
+
+Goal True -> forall (x:A) (l:list A), [] <> x :: l.
+intros.
+test2 nil_cons. apply nil_cons0. Qed.
+
+End test.

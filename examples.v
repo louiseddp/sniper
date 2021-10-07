@@ -70,7 +70,7 @@ Proof. snipe (rev_elements_app, app_nil_r). Qed.
 
 Lemma length_app_auto : forall B (HB: CompDec B), forall (l1 l2 l3 : list B),
 ((length (l1 ++ l2 ++ l3)) =? (length l1 + length l2 + length l3))%nat.
-Proof. intros B HB l1 l2 l3. snipe length_app. Qed.
+Proof. intros B HB l1 l2 l3. snipe_nat length_app. Qed.
 
 
 (* Example of search an element in a list *)
@@ -93,9 +93,7 @@ Qed.
 (* The proof of this lemma, except induction, can be automatized *)
 Lemma search_app_snipe : forall {A: Type} {H : CompDec A} (x: A) (l1 l2: list A),
     search x (l1 ++ l2) = ((search x l1) || (search x l2))%bool.
-Proof. intros A H x l1 l2. induction l1 as [ | x0 l0 IH]; simpl. interp_alg_types_context_goal. def_fix_and_pattern_matching  
-+ prop2bool_hyp H3_bool  .
-Qed.
+Proof. intros A H x l1 l2. induction l1 as [ | x0 l0 IH]; simpl; snipe. Qed.
 
 
 (* Manually using this lemma *)
