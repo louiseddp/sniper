@@ -3,7 +3,7 @@ Require Import Sniper.
 From Coq Require Import Arith.
 Add Rec LoadPath "/home/louise/github.com/lthms/FreeSpec/master/_build/default/theories/Core" as FreeSpec.Core.
 From FreeSpec.Core Require Import Core CoreFacts.
-Require Import List.
+
 
 Section airlock1.
 
@@ -19,17 +19,6 @@ Inductive DOORS : interface :=
 | IsOpen : door -> DOORS bool
 | Toggle : door -> DOORS unit.
 
-Print DOORS_ind.
-
-MetaCoq Quote Recursively Definition DOORS_ind_reif := DOORS_ind.
-
-
-Print DOORS_ind_reif.
-
-MetaCoq Quote Recursively Definition DOORS_reif := DOORS.
-
-
-Inductive foo : interface := bar1 : foo A | bar2 : foo B.
 Definition sel : door -> Ω -> bool := fun d : door => match d with
                       | left => fst
                       | right => snd
@@ -48,6 +37,9 @@ Inductive doors_o_callee : Ω -> forall a : Type, DOORS a -> a -> Prop :=
     doors_o_callee_is_open : forall (d : door) (ω : Ω) (x : bool),
                              sel d ω = x -> doors_o_callee ω bool (IsOpen d) x
   | doors_o_callee_toggle : forall (d : door) (ω : Ω) (x : unit), doors_o_callee ω unit (Toggle d) x.
+
+
+(* Inductive type => boolean function *)
 
 Definition doors_o_callee2 :  Ω -> forall (a : Type) (D :  DOORS a), (match D with 
 | IsOpen _ =>  bool 
@@ -73,27 +65,23 @@ Variable d : door.
 
 
 Goal doors_o_caller2 ω bool (IsOpen d).
-Proof. 
-snipe. admit. admit. admit. admit. Abort.
-
-
-(* Variable helper : (sel d ω) = true. *)
-
+Proof. scope. Fail verit. (*TODO Chantal *)
+ apply H6. Qed. 
 
 Variable o_caller : doors_o_caller2 ω bool (IsOpen d).
 Variable x : bool.
 Variable eq_cond : x = true.
 Variable o_caller0 : doors_o_callee2 ω bool (IsOpen d) x. 
+
 Goal doors_o_caller2 ω unit (Toggle d).
-Proof. scope. Fail verit.
-rewrite H12 in o_caller0. unfold is_true in o_caller0. rewrite Bool.eqb_true_iff in o_caller0.
-subst.
+Proof. scope. Fail verit. (* TODO Chantal *) 
+rewrite H12 in o_caller0. 
+unfold is_true in o_caller0. 
+rewrite Bool.eqb_true_iff in o_caller0.
+subst. rewrite H5. 
 rewrite o_caller0. 
- simpl. constructor. 
+simpl. constructor. 
 Qed.
-
-Print is_true. 
-
 
 Definition tog (d : door) (ω : Ω) : Ω :=
   match d with
@@ -139,9 +127,8 @@ Print MayProvide.
 
 Goal doors_o_caller2 ω bool (IsOpen d).
 Proof.
-scope. (* TODO verit. *) 
-
-constructor.
+scope. Fail verit. (* TODO Chantal. *) 
+apply H9.
 Qed.
 
 Variable o_caller : doors_o_caller2 ω bool (IsOpen d).
@@ -152,13 +139,20 @@ Variable equ_cond : x = false.
 
 
 Goal doors_o_caller2 ω unit (Toggle d).
-Proof. scope. rewrite H17 in o_caller0. unfold is_true in o_caller0. rewrite Bool.eqb_true_iff in o_caller0.
-subst. 
-rewrite equ_cond. rewrite safe. constructor. Qed.
+Proof. scope. Fail verit. (* TODO Chantal *) 
+unfold is_true in o_caller0.
+rewrite H15 in o_caller0.
+rewrite Bool.eqb_true_iff in o_caller0.
+subst.
+rewrite H8. 
+rewrite equ_cond. 
+rewrite safe. 
+auto.
+Qed.
 
 End airlock2.
 
-
+Section airlock3.
 
 Inductive CONTROLLER : interface :=
 | Tick : CONTROLLER unit
@@ -174,6 +168,10 @@ Definition request_open `{Provide ix CONTROLLER} (d : door) : impure ix unit :=
 #[local] Opaque close_door.
 #[local] Opaque open_door.
 #[local] Opaque Nat.ltb.
+#[local] Opaque sel.
+
+Open Scope nat_scope.
+
 
 Definition controller `{Provide ix DOORS, Provide ix (STORE nat)}
   : component CONTROLLER ix :=
@@ -192,6 +190,15 @@ Definition controller `{Provide ix DOORS, Provide ix (STORE nat)}
         put 0
     end.
 
+Lemma respectful_run_inv `{Provide ix DOORS} {a} (p : impure ix a)
+    (ω : Ω) (safe : sel left ω = false \/ sel right ω = false)
+    (x : a) (ω' : Ω) (hpre : pre (to_hoare doors_contract p) ω)
+    (hpost : post (to_hoare doors_contract p) ω x ω')
+  : sel left ω' = false \/ sel right ω' = false.
+
+
+Admitted. (* Not something to do automatically *) 
+
 Lemma controller_correct `{StrictProvide2 ix DOORS (STORE nat)}
   : correct_component controller
                       (no_contract CONTROLLER)
@@ -200,15 +207,19 @@ Lemma controller_correct `{StrictProvide2 ix DOORS (STORE nat)}
 
 Proof.
   intros ωc ωd pred a e req.
-  assert (hpre : pre (to_hoare doors_contract (controller a e)) ωd)
-    by (destruct e; prove impure with airlock).
-  split; auto.
+  assert (hpre : pre (to_hoare doors_contract (controller a e)) ωd).
+    (destruct e; prove impure).
+  - scope. (* TODO : Inductive predicates *) admit. 
+  - admit.
+  - admit. 
+  - admit.
+  - split; auto.
   intros x ωj' run.
   cbn.
   split.
   + auto with freespec.
   + apply respectful_run_inv in run; auto.
-Qed.
+Admitted.  
 
 End airlock3. 
 
