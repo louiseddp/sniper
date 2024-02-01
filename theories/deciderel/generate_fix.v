@@ -16,16 +16,20 @@ Unset MetaCoq Strict Unquote Universe Mode.
 
 (** Auxiliaries functions *)
 
+(* Refresh universes *)
 Definition all_type_to_fresh := fun t =>
 match t with
 | tSort s => if negb (Universe.is_prop s) then tSort fresh_universe else t
 | _ => t
 end.
 
+(* Refresh universes of all the arguments of an inductive *)
 Definition get_args_inductive_fresh_types (e : global_env) (i : term) :=
 let res := get_args_inductive e i in 
 List.map all_type_to_fresh res.
 
+
+(* Parameters of an inductive, with fresh sorts when needed *) 
 Definition params_inductive (e : global_env) (i : term) :=
 let info := info_inductive e i in
 match info with
@@ -84,34 +88,42 @@ end.
 
 (** Unfication algorithm **)
 
-Inductive option_unif (A : Type) : Type :=
-| failure : option_unif A
-| continue : nat -> term -> option_unif A
-| some : A -> option_unif A.
-
-Arguments some {A} a.
-Arguments failure {A}.
-Arguments continue {A}.
+(* Mapping of De Brujin indexes 
+ - the key is the De Brujin index present in the fixpoint
+ - the value is the De Brujin index present in the inductive relation 
+*)
 
 Definition mapping := list (nat * nat).
 
-Fixpoint replace_in_mapping (i j : nat) (m : mapping) :=
-match m with
-| [] => [(i, j)]
-| (i', j') :: m' => if Nat.eqb i i' then (i', j) :: m' else 
-(i', j') :: (replace_in_mapping i j m')
-end.
+(* failure : the unification failed
+   continue n t m : means that the unification is not finished: we should match n and the pattern is t, the intermediate mapping is m
+   some m : the unification is done and we get a mapping m between the De Brujin indexes *)
 
-Definition add_variable_in_mapping (i j : nat) (m : option_unif mapping) :=
+Inductive option_unif : Type :=
+| failure : option_unif 
+| continue : nat -> term -> mapping -> option_unif 
+| some : mapping -> option_unif.
+
+Fixpoint replace_in_mapping (i j : nat) (m : mapping) :=
+  match m with
+   | [] => [(i, j)]
+   | (i', j') :: m' => if Nat.eqb i i' then (i', j) :: m' else 
+      (i', j') :: (replace_in_mapping i j m')
+  end.
+
+Definition add_variable_in_mapping (i j : nat) (m : option_unif) :=
 match m with
 | failure => failure 
-| continue db t => continue db t
-| some m' => 
-(* if in_mapping i j m' =? 0 then some ((i, j) :: m') else 
-if in_mapping i j m' =? 1 then some m' else
-if in_mapping i j m' =? 2 then failure else some ((i, j) :: m')  *)
-some (replace_in_mapping i j m')
+| continue db t m => continue db t (replace_in_mapping i j m)
+| some m' => some (replace_in_mapping i j m')
 end.
+
+Fixpoint remove_variable_in_mapping (i : nat) (m : mapping) :=
+  match m with
+   | [] => []
+   | (i', j') :: m' => if Nat.eqb i i' then m' else 
+      (i', j') :: (remove_variable_in_mapping i m')
+  end.
 
 Fixpoint lift_mapping (nb_lift : nat) (m : mapping) :=
 match m with
@@ -136,33 +148,33 @@ and the De Brujin index of the variable which should be matched on
 - the terms are unifiable: we return the mapping of De Brujin indexes
 This mapping will be useful to know on which variables the premises of a constructor should 
 be applied 
-In order to avoid the problem of parameters, we introduce holes (= dumb_term) in our terms *)
+In order to avoid the problem of parameters 
+(which we do not want to consider), we introduce holes (= dumb_term) in our terms *)
 
-Fixpoint unify_aux (t1 t2 : term) (m : mapping) (fuel : nat) : option_unif mapping :=
+Fixpoint unify_aux (t1 t2 : term) (m : mapping) (fuel : nat) : option_unif :=
 match fuel with
-| S n' =>
+| S fuel' =>
   match t1, t2 with
   | tRel i, tRel j => add_variable_in_mapping i j (some m)
-  | tRel i, t => continue i t (* the unification is not finished : we need to pattern match on the variable of De Brujin
-index i *)
-  | tApp u1 [], u2 => unify_aux u1 u2 m n'
-  | tApp u1 l, tRel _ => if (List.forallb (fun x => eqb_term x dumb_term) l) then unify_aux u1 t2 m n' else failure
-  | tApp u1 l1, tApp u2 l2 => if eqb_term u1 u2 then unify_list_aux l1 l2 m n' else failure
+  | tRel i, t => continue i t m (* the unification is not finished : we need to pattern match on the variable of De Brujin index i *)
+  | tApp u1 [], u2 => unify_aux u1 u2 m fuel'
+  | tApp u1 l, tRel _ => if (List.forallb (fun x => eqb_term x dumb_term) l) then unify_aux u1 t2 m fuel' else failure
+  | tApp u1 l1, tApp u2 l2 => if eqb_term u1 u2 then unify_list_aux l1 l2 m fuel' else failure
   | tConstruct _ _ _, tRel _ => some m
-  | _, _ =>  if eqb_term t1 t2 then (some m) else 
+  | _, _ =>  if eqb_term t1 t2 then some m else 
              if eqb_term t1 dumb_term then some m else failure
   end
 | 0 => failure
 end
-with unify_list_aux (l1 l2 : list term) (m : mapping) (fuel : nat) : option_unif mapping :=
+with unify_list_aux (l1 l2 : list term) (m : mapping) (fuel : nat) : option_unif :=
 match fuel with
-| S n' => 
+| S fuel' => 
   match l1, l2 with
-  | x1 :: x1s, x2 :: x2s => let res := unify_aux x1 x2 m n' in
+  | x1 :: x1s, x2 :: x2s => let res := unify_aux x1 x2 m fuel' in
     match res with
     | failure => failure
-    | continue db t => continue db t
-    | some m' => unify_list_aux x1s x2s m' n'
+    | continue db t m => continue db t m
+    | some m' => unify_list_aux x1s x2s m' fuel'
     end
   | [], [] => some m
   | _, _ => failure
@@ -170,12 +182,21 @@ end
 | 0 => failure
 end.
 
-Definition unify_mapping (t1 t2 : term) (m : mapping) := 
+(* Version with no fuel *)
+Definition unify_mapping_aux (t1 t2 : term) (m : mapping) := 
 if eqb_term t1 t2 then some m else
 let fuel := size t1 + size t2 in unify_aux t1 t2 m fuel.
 
-Definition unify (t1 t2 : term) := 
-let fuel := size t1 + size t2 in unify_aux t1 t2 [] fuel.
+(* Some preprocessing is needed before returning 
+the result of the unification: we should remove the variable we will match on from the mapping, 
+as it disappear in the new branches of the match *)
+
+Definition unify_mapping (t1 t2 : term) (m : mapping) :=
+let res := unify_mapping_aux t1 t2  m in
+  match res with
+    | continue db t m => continue db t (remove_variable_in_mapping db m)
+    | _ => res
+  end.
 
 Fixpoint ex_list_bool {A : Type} (P : A -> bool) (l : list A) :=
 match l with
@@ -232,7 +253,7 @@ end.
 Fixpoint unify_list_mapping
 (t: term) 
 (pcs : list term) 
-(ms : list mapping) : option (list (option_unif mapping)) :=
+(ms : list mapping) : option (list option_unif) :=
 match pcs, ms with
   | [], [] => Some []
   | pc :: pcs, m :: ms => 
@@ -245,47 +266,14 @@ match pcs, ms with
 end.
 
 
-Definition unifs_all_some (ms : list (option_unif mapping)) :=
+Definition unifs_all_some (ms : list option_unif) :=
 List.forallb (fun x => match x with | some _ => true | _ => false end) ms.
 
-Definition unifs_fst_some (ms : list (option_unif mapping)) :=
+Definition unifs_fst_some (ms : list option_unif) :=
   match ms with
     | [] => false
     | x :: _ => (match x with some _ => true | _ => false end)
   end.
-
-
-(* TODO : not factorized at all, should be reorganized some day
-as the unification is made several times *)
-
-Fixpoint unify_list_mapping2
-(t: term) 
-(pc: term) 
-(ms : list mapping) : list mapping  :=
-  match ms with 
-    | [] => []
-    | m :: ms' => 
-        let u := unify_mapping t pc m in
-        match u with
-          | some m' => m' :: unify_list_mapping2 t pc ms'
-          | _ => m :: unify_list_mapping2 t pc ms'
-        end
-  end.
-
-Fixpoint unify_list_list_mapping 
-(t : term)
-(pcs : list term)
-(ms : list mapping) : list term :=
-  match pcs, ms with
-    | pc :: pcs', m :: ms' => 
-        let u := unify_mapping t pc m in
-        match u with
-          | continue n' pc' => pc' :: unify_list_list_mapping t pcs' ms'
-          | _ => pc :: unify_list_list_mapping t pcs' ms'
-        end
-    | [], [] => []
-    | _, _ => pcs
-  end.  
 
 Definition head_becomes_last {A : Type} (l : list A) :=
   match l with
@@ -293,12 +281,12 @@ Definition head_becomes_last {A : Type} (l : list A) :=
     | x :: xs => xs ++ [x]
   end.
 
-Definition unifs_contains_failure (ms : list (option_unif mapping)) :=
+Definition unifs_contains_failure (ms : list option_unif) :=
 List.existsb (fun x => match x with | failure => true | _ => false end) ms.
 
 Fixpoint replace_mappings 
 (ms : list mapping)
-(lunif : list (option_unif mapping)) :=
+(lunif : list option_unif) :=
 match ms, lunif with
 | m :: ms, (some m') :: lunif => m' :: replace_mappings ms lunif
 | m :: ms, _ :: lunif => m :: replace_mappings ms lunif
@@ -355,20 +343,11 @@ end.
 Definition find_cstr_info (npars : nat) (t : term) :=
 find_cstr_info_aux [] npars t [] [].
 
-(* I am completely cheating here to make a specific example work 
-TODO ! *)
-
-Fixpoint in_mapping_sym i (m : mapping) :=
-match m with
-| (j, _) :: m' => if i =? j then true else in_mapping_sym i m'
-| [] => false
-end. 
-
 Definition find_mapping i m :=
 let fix aux i m m' :=
 match m with
 | (j, k) :: m'' => if i =? k then j else aux i m'' m'
-| [] => if in_mapping_sym i m' then (S (S i)) else i
+| [] => i
 end in aux i m m.
 
 (* as we have strong hypothesis about the form
@@ -646,16 +625,6 @@ Fixpoint map_replace_head (l : list term) (ls : list (list term)) :=
     | _, _ => []
   end.
 
-Fixpoint map_get_head (ls : list (list term)) : list term :=
-  match ls with
-    | l0 :: ls' => 
-        match l0 with
-          | [] => tVar "error no head"%bs :: map_get_head ls'
-          | x :: xs => x :: map_get_head ls'
-        end
-    | _ => []
-  end.
-
 (* Variable toto : bool.
 
 Variable toto2 : list nat.
@@ -747,7 +716,7 @@ match args, list_constructors with
     | [], [] => <% false %>
     | new_mapping :: new_mappings', t :: ts' => 
         match unify_mapping cstr_applied t new_mapping with 
-          | continue n' pc' => (* we need to continue to match the variable n' against pc' *)
+          | continue n' pc' m' => (* we need to continue to match the variable n' against pc' *)
                     let l := List.rev (build_list_of_vars len) in
                     let new_vars := l++(List.map (fun x => x + len) vars) in
                     let new_tys := lty++List.map (fun x => lift len 0 x) ty_vars in
@@ -757,15 +726,13 @@ match args, list_constructors with
                     let new_vars := elim_not_indu'.1 in
                     let new_tys := elim_not_indu'.2 in 
                     let ty_n' := find_type n' elim_not_indu in
-                    let patterns_conclusion' := unify_list_list_mapping cstr_applied ts new_mappings in
-                    let patterns_conclusion_list' := map_replace_head patterns_conclusion' patterns_conclusion in
-                    build_pattern_list e n' ty_n' patterns_conclusion' new_vars new_tys premises patterns_conclusion_list' new_mappings ldec fuel'
+                    let pcs' := replace_head pc' ts in
+                    build_pattern_list e n' ty_n' pcs' new_vars new_tys premises patterns_conclusion (m'::new_mappings') ldec fuel'
           | failure => (* failure : we need to try another constructor for this variable so we remove the premises of the first constructor  *)
               <% fail %> 
           | some m' => 
                   if is_empty patterns_conclusion then (* no more patterns to match so we should if other constructors can match *)
-                  let new_mappings'' := unify_list_mapping2 cstr_applied t new_mappings' in
-                  let res := aux new_mappings'' ts' (tl premises) patterns_conclusion in
+                  let res := aux new_mappings' ts' (tl premises) patterns_conclusion in
                   let res2 := build_andb (return_premises (hd [] premises) m' ldec) in 
                   if orb (eqb_term res <% false %>) (eqb_term res <% fail %>) then  res2
                   else if orb (eqb_term res <%true %>) (eqb_term res2 <%true%>) then <% true %>
@@ -780,8 +747,7 @@ match args, list_constructors with
                   let new_tys := elim_not_indu'.2 in 
                   let new_patterns := List.map (fun x => [hd default_reif x]) patterns_conclusion in (* we are commited to the first constructor now *)
                   let res := cstr_handler_list e (tl new_vars) (tl new_tys) [hd [] premises] (tl new_patterns) [m'] ldec fuel' in
-                  let new_mappings'' := unify_list_mapping2 cstr_applied t new_mappings' in
-                  let res2 := aux new_mappings'' ts' (tl premises) (List.map (fun x => tl x) patterns_conclusion) in
+                  let res2 := aux new_mappings' ts' (tl premises) (List.map (fun x => tl x) patterns_conclusion) in
                 if eqb_term res <% false %> then 
                     res2 
                   else if orb (eqb_term res2 <% false %>) (eqb_term res2 <% fail %>)  then res
@@ -1111,9 +1077,9 @@ Inductive smallernat : list nat -> list nat -> Prop :=
 | cons2 : forall l l' x x', smallernat l l' -> smallernat (x :: l) (x' :: l').
 
 Inductive ordered_list : list nat -> Prop :=
+| ordered_rec : forall l x y, Nat.le x y -> ordered_list l -> ordered_list (x::y::l)
 | ordered_nil : ordered_list []
-| ordered_singl : forall x, ordered_list [x]
-| ordered_rec : forall l x y, Nat.le x y -> ordered_list l -> ordered_list (x::y::l).
+| ordered_singl : forall x, ordered_list [x].
 
 
 MetaCoq Run (build_fixpoint_auto ordered_list [(<%Nat.le%>, <%Nat.leb%>, <% Nat.leb_le %>)]).
