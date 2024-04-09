@@ -64,6 +64,14 @@ Ltac2 trigger_anonymous_funs := TAlways.
 Ltac2 trigger_higher_order :=
   TAlways.
 
+Ltac2 rec pose_proofs (l: constr list) :=
+    match l with
+    | [] => () 
+    | x :: xs => 
+      let x' := Ltac1.of_constr x in ltac1:(x |- let H := fresh in pose proof (H := x)) x'; 
+      pose_proofs xs
+  end.
+  
 Ltac2 scope_verbos v := orchestrator 5
 { all_tacs := [((trigger_anonymous_funs, false, None), "my_anonymous_functions", trivial_filter);
 ((trigger_higher_order, false, None), "my_higher_order", trivial_filter) ; 
@@ -82,11 +90,23 @@ Ltac2 scope_verbos v := orchestrator 5
 
 Ltac2 scope () := scope_verbos Nothing.
 
+Ltac2 scope_args (l: constr list) := 
+ pose_proofs l ; scope ().
+
 Ltac2 scope_info () := scope_verbos Info.
+
+Ltac2 scope_info_args l :=
+  pose_proofs l ; scope_info ().
 
 Ltac2 scope_debug () := scope_verbos Debug.
 
+Ltac2 scope_debug_args l := 
+  pose_proofs l ; scope_debug ().
+
 Ltac2 scope_full () := scope_verbos Full.
+
+Ltac2 scope_full_args l := 
+  pose_proofs l ; scope_full ().
 
 Ltac2 scope2_verbos v := orchestrator 5
 { all_tacs := 
@@ -106,13 +126,41 @@ Ltac2 scope2_verbos v := orchestrator 5
 
 Ltac2 scope2 () := scope2_verbos Nothing.
 
+Ltac2 scope2_args (l: constr list) := 
+ pose_proofs l ; scope2 ().
+
 Ltac2 scope2_info () := scope2_verbos Info.
+
+Ltac2 scope2_info_args l :=
+  pose_proofs l ; scope2_info ().
 
 Ltac2 scope2_debug () := scope2_verbos Debug.
 
+Ltac2 scope2_debug_args l := 
+  pose_proofs l ; scope2_debug ().
+
 Ltac2 scope2_full () := scope2_verbos Full.
 
+Ltac2 scope2_full_args l := 
+  pose_proofs l ; scope_full ().
+
 Tactic Notation "scope" := ltac2:(Control.enter (fun () => intros; scope ())).
+
+Tactic Notation "scope" constr_list(l) :=
+  let tac :=
+  ltac2:(l |-
+    let l' := Ltac1.to_list l in
+    let l :=
+      match l' with
+        | None => []
+        | Some l => List.map (fun x => Option.get (Ltac1.to_constr x)) l
+      end in
+    Control.enter (fun () =>
+    intros ; scope_args l)) in tac l.
+
+Tactic Notation "snipe_no_check" constr_list(l) := intros; scope l ; verit_no_check_orch.
+
+Tactic Notation "snipe" constr_list(l) := intros; scope l ; verit.
 
 Tactic Notation "scope_info" := ltac2:(Control.enter (fun () => intros; scope_info ())).
 
