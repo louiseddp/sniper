@@ -95,7 +95,7 @@ let B := eval cbv in p.2 in
 let eq := eval cbv in (gen_eq l B t u names)
 in let z := metacoq_get_value (tmUnquote eq) in
 let u := eval hnf in (z.(my_projT2)) in let H' := fresh in 
-(assert (H': u) by reflexivity ; 
+(assert (H': u) by first [reflexivity | rewrite H; reflexivity] ; 
 k H')
 | _ => k H
 end.
