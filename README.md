@@ -3,6 +3,9 @@
 `Sniper` is a Coq plugin that provides a new Coq tactic, `snipe`, that
 provides general proof automation.
 
+**This is a version of the development of `Sniper` linked to 
+the PhD manuscript of Louise Dubois de Prisque.**
+
 This plugin is an extension of [SMTCoq](https://smtcoq.github.io), a
 plugin to safely call external SMT solvers from Coq. `Sniper` extends
 SMTCoq by translating (a subset) of Coq goals into first-order logic
@@ -11,8 +14,7 @@ before calling SMTCoq.
 The translation is implemented through a combination of modular, small
 transformations that independently eliminate specific aspects of Coq
 logic towards first-order logic. These small transformations are safe,
-either generating proof terms on the fly (*certifying* transformations)
-or being proved once and for all in Coq (*certified* transformations). A
+either generating proof terms on the fly (*certifying* transformations). A
 crucial transformation is given by the
 [Trakt](https://github.com/ecranceMERCE/trakt) plugin.
 
@@ -67,10 +69,6 @@ We need the veriT binary to be in PATH in order for `Sniper` to use it:
 export PATH="$PATH:$(pwd)"
 cd ..
 ```
-
-## Examples, tests and benchmarks
-
-Commented examples are available at ``examples.v``.
 
 ## License
 As an extension of SMTCoq, `Sniper` is released under the same license
