@@ -85,7 +85,7 @@ get_definitions_aux p0 default CompDec k.
 Ltac get_definitions_theories_no_generalize p0 := fun k =>
 get_definitions_aux_no_generalize p0 default CompDec k.
 
-(* The basics tactics, not recursive, used for tests *)
+(* The basic tactic *)
 Ltac get_def x := 
 let x' := eval unfold x in x in 
 let H := fresh x "_def" in assert (H : x = x') by reflexivity.
