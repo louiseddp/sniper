@@ -80,29 +80,6 @@ Trakt Add Relation 2 (smaller_than_all) (smaller_than_all_decidable) (decidable_
 Lemma smaller_than_all_nil : (forall (z: Z), smaller_than_all z nil).
 Proof. snipe. Qed.
 
-(* An example with an inductive type which takes a parameter: 
-all the elements of the list are smaller than the one given as parameters *)
-
-Inductive elt_smaller_than (n : nat) : list nat -> Prop :=
-| smThanNil : elt_smaller_than n nil
-| smThanCons : forall (n' : nat) (l : list nat), Nat.le n' n -> elt_smaller_than n l -> 
-elt_smaller_than n (n' :: l).
-
-MetaCoq Run (decide (elt_smaller_than) [(<%Nat.le%>, <%Nat.leb%>, <%Nat.leb_le%>)]).
-Next Obligation.
-split.
-- intro Hyp. induction Hyp. auto. simpl. rewrite IHHyp. simpl. rewrite Nat.leb_le. 
-assumption.
-- intros Hyp. induction H. constructor. constructor; simpl in Hyp; 
-elim_and_and_or. apply Nat.leb_le. assumption. apply IHlist. assumption. Qed.
-
-Trakt Add Relation 2 (elt_smaller_than) (elt_smaller_than_decidable) (decidable_lemma1).
-
-(* Lemma smaller_than_mem : 
-forall (n n' : Z) (l : list Z), smaller_than_all n l -> mem n' l -> Z.le n n'.
-Proof.
-intros n n' l H1 H2. induction l; snipe. Qed.  TODO silent simplifications veriT *)
-
 (* An example with instantiated polymorphic types :
 the inductive says that second list is smaller than the second one 
 We do not handle polymorphism (with an hypothesis of decidable equality whenever it is needed)
@@ -121,8 +98,7 @@ split.
 constructor. apply IHlist. assumption. Qed.
 
 Variable A : Type.
-Variable HA : CompDec A. (* commenting this line makes the command fail because of 
-universe instances *)
+Variable HA : CompDec A. 
 
 MetaCoq Run (decide (@Add) []).
 Next Obligation. intros A0 H a l1 l2.
@@ -142,7 +118,7 @@ subst. constructor. apply IHl1. assumption.
 Qed.
 
 (* Trakt does not handle polymorphism yet but Deciderel deals with polymorphism with
-CompDec hypothesis *)
+CompDec hypothesis, so we do not add this predicate to Trakt's database *)
 
 End Examples.
 
