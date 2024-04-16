@@ -82,8 +82,7 @@ Proof. snipe. Qed.
 
 (* An example with instantiated polymorphic types :
 the inductive says that second list is smaller than the second one 
-We do not handle polymorphism (with an hypothesis of decidable equality whenever it is needed)
-for now because Trakt does not either
+But Trakt does not handle polymorphism, so we cannot use the `Trakt Add Relation` command
 *)
 
 Inductive smaller_list {A : Type} : list A -> list A -> Prop :=
@@ -116,9 +115,6 @@ intros. simpl in H0. destruct l2 ; simpl in *.
 inversion H0. elim_and_and_or; unfold is_true in * ; elim_eq. subst. constructor.
 subst. constructor. apply IHl1. assumption.
 Qed.
-
-(* Trakt does not handle polymorphism yet but Deciderel deals with polymorphism with
-CompDec hypothesis, so we do not add this predicate to Trakt's database *)
 
 End Examples.
 
