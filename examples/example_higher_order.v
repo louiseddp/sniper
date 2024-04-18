@@ -1,4 +1,4 @@
-From Sniper Require Import Sniper. Print List.fold_left.
+From Sniper Require Import Sniper. 
 
 Goal (forall (A B : Type) (a: A) (l : list B) (f : A -> B -> A), 
 List.fold_left f nil a = a).

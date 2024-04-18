@@ -77,17 +77,19 @@ let rec aux h :=
             | (id, opt, cstr) => let hltac2 := Control.hyp id in
               let hltac1 := Ltac1.of_constr hltac2 in ltac1:(H |- let T := type of H in let U := type of T 
               in tryif (constr_eq U Prop) then try (expand_hyp_cont H ltac:(fun H' => let T := type of H' in 
-              try (eliminate_fix_cont H' ltac:(fun H'' => eliminate_dependent_pattern_matching H''))); clear H)
+              try (eliminate_fix_cont H' ltac:(fun H'' => eliminate_dependent_pattern_matching H'')); clear H))
 else idtac) hltac1 ; aux xs
             end
 end 
 in aux h0.
 
 
-Tactic Notation "anonymous_funs" :=
+Tactic Notation "anonymous_funs_eq" :=
 ltac2:(Control.enter anonymous_funs_with_equations).
 
+Set Default Proof Mode "Classic".
+
 Lemma bar2 A B C (l : list A) (f : A -> B) (g: B -> C) : map (fun x => g (f x)) l = (fun l' => map g (map f l')) l.
-Proof. anonymous_funs_with_equations (). Abort. 
+Proof. anonymous_funs_eq. Abort. 
 
 
