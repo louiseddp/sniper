@@ -117,13 +117,13 @@ we do not want to unfold foo *)
 Definition tuple_type_of_opaque_def := CompDec.
 
 Ltac def_and_pattern_matching p1 k := 
-anonymous_funs_eq ; prenex_higher_order_with_equations ;
+anonymous_funs ; prenex_higher_order_with_equations ;
 let p1' := eval unfold p1 in p1 in
 k p1' ltac:(fun H => expand_hyp_cont H ltac:(fun H' => 
 eliminate_dependent_pattern_matching H')).
 
 Ltac def_fix_and_pattern_matching p1 k := 
-anonymous_funs_eq ; prenex_higher_order_with_equations ;
+anonymous_funs ; prenex_higher_order_with_equations ;
 let p1' := eval unfold p1 in p1 in
 k p1' ltac:(fun H => expand_hyp_cont H ltac:(fun H' => 
 eliminate_fix_cont H' ltac:(fun H'' =>
