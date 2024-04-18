@@ -66,30 +66,22 @@ From Ltac2 Require Import Ltac2.
 
 Ltac2 anonymous_funs_with_equations (u : unit) :=
 let h := Control.hyps () in 
-let _ := ltac1:(anonymous_funs) in
+let () := ltac1:(anonymous_funs) in
 let h' := Control.hyps () in 
-let len := List.length h in
-let h0 := List.lastn len h' in 
+let h0 := new_hypothesis h h' in 
 let rec aux h :=
   match h with
   | [] => ()
   | x :: xs => match x with
             | (id, opt, cstr) => let hltac2 := Control.hyp id in
               let hltac1 := Ltac1.of_constr hltac2 in ltac1:(H |- let T := type of H in let U := type of T 
-              in tryif (constr_eq U Prop) then try (expand_hyp_cont H ltac:(fun H' => let T := type of H' in 
-              try (eliminate_fix_cont H' ltac:(fun H'' => eliminate_dependent_pattern_matching H'')); clear H))
+              in tryif (constr_eq U Prop) then try (expand_hyp_cont H ltac:(fun H' => 
+              eliminate_fix_cont H' ltac:(fun H'' => eliminate_dependent_pattern_matching H'')); clear H)
 else idtac) hltac1 ; aux xs
             end
 end 
 in aux h0.
 
 
-Tactic Notation "anonymous_funs_eq" :=
+Tactic Notation "anonymous_funs" :=
 ltac2:(Control.enter anonymous_funs_with_equations).
-
-Set Default Proof Mode "Classic".
-
-Lemma bar2 A B C (l : list A) (f : A -> B) (g: B -> C) : map (fun x => g (f x)) l = (fun l' => map g (map f l')) l.
-Proof. anonymous_funs_eq. Abort. 
-
-
