@@ -3,6 +3,8 @@
 `Sniper` is a Coq plugin that provides a new Coq tactic, `snipe`, that
 provides general proof automation.
 
+**This version is a fixed version for the PhD manuscript of Louise Dubois de Prisque**
+
 This plugin is an extension of [SMTCoq](https://smtcoq.github.io), a
 plugin to safely call external SMT solvers from Coq. `Sniper` extends
 SMTCoq by translating (a subset) of Coq goals into first-order logic
