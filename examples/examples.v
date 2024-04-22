@@ -12,9 +12,8 @@
 (* Imports made if you have installed the opam package.
 If you used `make`, write `Require Import Sniper.` instead *)
 
-
-From SMTCoq Require Import SMTCoq.
 From Sniper Require Import Sniper.
+From SMTCoq Require Import SMTCoq.
 From Sniper Require Import tree.
 Require Import String.
 Require Import ZArith.
@@ -24,6 +23,14 @@ Import ListNotations.
 
 
 Local Open Scope Z_scope.
+
+(* In these examples, we propose two versions of Sniper :
+- snipe : the proof term produced by verit is checked before the Qed
+- snipe_no_check : the proof term produced by verit is not checked 
+before the Qed 
+In addition, the preprocessing of `snipe_no_check` will add the hypotheses 
+that some types need to be member of the CompDec typeclass, whereas
+in `snipe`, the tactic `veriT` will do it *)
 
 (** Examples on lists *)
 
@@ -100,7 +107,7 @@ It is still slow because almost all the transformations are triggered *)
 Lemma map_compound : forall (f : A -> B) (g : B -> C) (l : list A), 
 map g (map f l) = map (fun x => g (f x)) l.
 Proof.
-induction l; scope. Admitted.
+induction l; snipe_no_check. Qed.
 
 End higher_order.
 
@@ -151,7 +158,7 @@ Proof. pose proof search_app. snipe_no_check. Qed.
 
 Lemma in_inv : forall (a b:A) (l:list A),
     search b (a :: l) -> orb (eqb_of_compdec H a b) (search b l).
-Proof. intros; scope; verit. Qed.
+Proof. snipe. Qed.
 
 
 (*  Another example with an induction *)
@@ -159,42 +166,6 @@ Lemma app_nil_r : forall (A: Type) (H: CompDec A) (l:list A), (l ++ [])%list = l
 Proof. intros ; induction l; snipe_no_check. Qed. 
 
 End search.
-
-Section higher_order.
-
-
-Variable A B C: Type.
-Variable HA : CompDec A.
-Variable HB : CompDec B.
-Variable HC : CompDec C.
-
-Fixpoint zip {A B : Type} (l : list A) (l' : list B) :=
-  match l, l' with
-  | [], _ => []
-  | x :: xs, [] => []
-  | x :: xs, y :: ys => (x, y) :: zip xs ys 
-  end.
-
-
-(* TODO : work on this 
-
-Lemma zip_map : forall (f : A -> B) (g : A -> C) (l : list A),
-map (fun (x : A) => (f x, g x)) l = zip (map f l) (map g l).
-Proof. Time intros f g l ; induction l; scope. verit. Qed.
- *)
-(* An example with higher order and anonymous functions 
-Note that as map should be instantiated by f and g, 
-it does not work by using an induction principle which generalizes 
-on f and g, so f and g have to be introduced before l 
-It also work only with snipe2 because the arrow type instances will 
-make SMTCoq complain *) 
-
-Lemma map_compound : forall (f : A -> B) (g : B -> C) (l : list A), 
-map g (map f l) = map (fun x => g (f x)) l.
-Proof.
-induction l; time snipe. Qed.
-
-End higher_order.
 
 (** Examples on trees *)
 
