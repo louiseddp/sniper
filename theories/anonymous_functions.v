@@ -6,7 +6,7 @@ Require Import instantiate_inductive_pars.
 
 From elpi Require Import elpi.
 
-Ltac mypose t := 
+Ltac mypose' t := 
 tryif (is_local_def t) then idtac else
 let Na := fresh "f" in pose t as Na; try fold Na. (* ; 
 fold Na ;
@@ -26,14 +26,14 @@ Elpi Accumulate lp:{{
   pred anonyms_funs_hyps i: int, i: goal, o: list sealed-goal.
     anonyms_funs_hyps 0 _ _.
     anonyms_funs_hyps N (goal Ctx _ _ _ _ as G) GL :- ctx_to_tys Ctx Trms,
-      get_anonymous_funs_list Trms [F|_L], coq.ltac.call "mypose" [trm F] G [G'],
+      get_anonymous_funs_list Trms [F|_L], coq.ltac.call "mypose'" [trm F] G [G'],
       N1 is N - 1, coq.ltac.open (anonyms_funs_hyps N1) G' GL.
 
   pred anonyms_funs_goal i: int, i: goal, o: list sealed-goal.
     anonyms_funs_goal 0 (goal Ctx _ _ _ _ as G) GL :- ctx_to_tys Ctx Trms,
       get_anonymous_funs_list Trms LfunsCtx, std.length LfunsCtx N, anonyms_funs_hyps N G GL. 
     anonyms_funs_goal N (goal _ _ TyG _ _ as G) GL :- get_anonymous_funs_list [TyG] [F|_],
-      coq.ltac.call "mypose" [trm F] G [G'],
+      coq.ltac.call "mypose'" [trm F] G [G'],
       N1 is N - 1, coq.ltac.open (anonyms_funs_goal N1) G' GL.
 
   solve (goal _ _ TyG _ _ as G) GL :-

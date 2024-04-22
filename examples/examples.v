@@ -9,15 +9,13 @@
 (*                                                                        *)
 (**************************************************************************)
 
+(* Imports made if you have installed the opam package.
+If you used `make`, write `Require Import Sniper.` instead *)
 
-(* If you have Sniper installed, change these two lines into:
-   From Sniper.orchestrator Require Import Sniper.
-   From Sniper Require Import tree.
-*)
+
 From SMTCoq Require Import SMTCoq.
-From Sniper.orchestrator Require Import Sniper.
+From Sniper Require Import Sniper.
 From Sniper Require Import tree.
-From Sniper Require Import Transfos.
 Require Import String.
 Require Import ZArith.
 Require Import Bool.
@@ -54,20 +52,6 @@ Section Generic.
 
 End Generic.
 
-
-(* When the goal is automatically provable by the `snipe` tactic, it is
-   often done in a few seconds. To avoid too long runs when the goal is
-   not provable, the tactic can be called with a timeout, in seconds. *)
-Section Timeout.
-
-  Variable A : Type.
-  Hypothesis HA : CompDec A.
-  Goal forall (l : list A) (x : A),  hd_error l = Some x -> (l <> nil).
-  Proof. (* snipe_timeout 10. *) snipe_no_check. Qed.
-
-End Timeout.
-
-
 (* A more involved example *)
 Section destruct_auto.
 
@@ -93,6 +77,8 @@ Section destruct_auto.
     apply app_cons_not_nil in H1 as [].
   Qed.
 
+(* This example is in the manuscript *)
+
 Theorem app_eq_unit_auto :
     forall (x y: list A) (a:A),
       x ++ y = a :: nil -> x = [] /\ y = [a] \/ x = [a] /\ y = [].
@@ -100,6 +86,23 @@ Theorem app_eq_unit_auto :
 
 
 End destruct_auto.
+
+Section higher_order.
+
+Variable A B C: Type.
+Variable HA : CompDec A.
+Variable HB : CompDec B.
+Variable HC : CompDec C.
+
+(* This example is in the manuscript. 
+It is still slow because almost all the transformations are triggered *)
+
+Lemma map_compound : forall (f : A -> B) (g : B -> C) (l : list A), 
+map g (map f l) = map (fun x => g (f x)) l.
+Proof.
+induction l; scope. Admitted.
+
+End higher_order.
 
 Section search.
 
