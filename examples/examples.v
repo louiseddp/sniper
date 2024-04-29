@@ -24,19 +24,17 @@ Import ListNotations.
 
 Local Open Scope Z_scope.
 
-(* In these examples, we propose two versions of Sniper :
-- snipe : the proof term produced by verit is checked before the Qed
-- snipe_no_check : the proof term produced by verit is not checked 
-before the Qed 
-In addition, the preprocessing of `snipe_no_check` will add the hypotheses 
-that some types need to be member of the CompDec typeclass, whereas
-in `snipe`, the tactic `veriT` will do it *)
-
 (** Examples on lists *)
+
+(* Note that if you run the examples, the call to the SMT solver veriT 
+produces a warning.
+It is not linked to the preprocessing part but to an issue from 
+SMTCoq : https://github.com/smtcoq/smtcoq/issues/108 *)
+
 
 (* A simple example *)
 Goal forall (l : list Z) (x : Z), hd_error l = Some x -> (l <> nil).
-Proof. snipe_no_check. Qed.
+Proof. snipe. Qed.
 
 (* The `snipe` and `snipe_no_check` tactics requires instances of equality to be decidable.
    It is in particular visible with type variables. *)
@@ -55,7 +53,7 @@ Section Generic.
   (* On abstract type, it has to be assumed. *)
   Hypothesis HA : CompDec A.
   Goal forall (l : list A) (x : A),  hd_error l = Some x -> (l <> nil).
-  Proof. snipe_no_check. Qed.
+  Proof. snipe. Qed.
 
 End Generic.
 
@@ -89,7 +87,7 @@ Section destruct_auto.
 Theorem app_eq_unit_auto :
     forall (x y: list A) (a:A),
       x ++ y = a :: nil -> x = [] /\ y = [a] \/ x = [a] /\ y = [].
-  Proof. snipe_no_check. Qed.
+  Proof. snipe. Qed.
 
 
 End destruct_auto.
@@ -107,7 +105,7 @@ It is still slow because almost all the transformations are triggered *)
 Lemma map_compound : forall (f : A -> B) (g : B -> C) (l : list A), 
 map g (map f l) = map (fun x => g (f x)) l.
 Proof.
-induction l; snipe_no_check. Qed.
+induction l; snipe. Qed.
 
 End higher_order.
 
@@ -137,7 +135,7 @@ Qed.
 (* The proof of this lemma, except induction, can be automatized *)
 Lemma search_app_snipe : forall (x: A) (l1 l2: list A),
     @search x (l1 ++ l2) = ((@search x l1) || (@search x l2))%bool.
-Proof. intros x l1 l2. induction l1 as [ | x0 l0 IH]; snipe_no_check. Qed. 
+Proof. intros x l1 l2. induction l1 as [ | x0 l0 IH]; snipe. Qed. 
 
 
 (* Manually using this lemma *)
@@ -154,7 +152,7 @@ Qed.
 (* It can be fully automatized *)
 Lemma snipe_search_lemma : forall (x: A) (l1 l2 l3: list A),
 search x (l1 ++ l2 ++ l3) = search x (l3 ++ l2 ++ l1).
-Proof. pose proof search_app. snipe_no_check. Qed.
+Proof. pose proof search_app. snipe. Qed.
 
 Lemma in_inv : forall (a b:A) (l:list A),
     search b (a :: l) -> orb (eqb_of_compdec H a b) (search b l).
@@ -163,7 +161,7 @@ Proof. snipe. Qed.
 
 (*  Another example with an induction *)
 Lemma app_nil_r : forall (A: Type) (H: CompDec A) (l:list A), (l ++ [])%list = l.
-Proof. intros ; induction l; snipe_no_check. Qed. 
+Proof. intros ; induction l; snipe. Qed. 
 
 End search.
 
@@ -182,4 +180,4 @@ Qed.
 
 Lemma rev_elements_node c (H: CompDec c) l x r :
  rev_elements c (Node l x r) = (rev_elements c r ++ x :: rev_elements c l)%list.
-Proof. pose proof app_ass ; pose proof rev_elements_app ; snipe_no_check. Qed.
+Proof. pose proof app_ass ; pose proof rev_elements_app ; snipe. Qed.
