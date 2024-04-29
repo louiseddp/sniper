@@ -9,11 +9,11 @@ Section Generic.
   Proof. 
     snipe. 
   Qed.
-
-    (* New goals are open that require instances of equality to be
-       decidable. On usual types such as `Z` in the previous example,
-       these goals are automatically discharged. On other concrete
-       types, it is up to the user to prove it or admit it. *)
+    (* `snipe` open new goals that require instances of equality to be
+       decidable. On usual types such as integers in the previous
+       example, these goals are automatically discharged. On other
+       concrete types, it is up to the user to prove it or admit it. On
+       type variables, it should be added as an hypothesis. *)
 
   Goal forall (A: Type) (HA : CompDec A) (l : list A) (x : A),  hd_error l = Some x -> (l <> nil).
   Proof.
