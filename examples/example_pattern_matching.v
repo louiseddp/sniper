@@ -42,4 +42,28 @@ assert (H'' : forall (A : Type) (n : nat) (l : list A) (default : A),
 eliminate_dependent_pattern_matching H''.
 Abort.
 
+Inductive vect (A : Type) : nat -> Type :=
+  |nil : vect A 0
+  |cons : forall (h:A) (n:nat), vect A n -> vect A (S n).
+
+Definition vect_tail {A: Type} (n: nat) (v: vect A n) :=
+  match v as x
+  return match x with 
+    | nil => vect A 0
+    | cons x n h => vect A n
+  end with
+    | nil => nil A
+    | cons x n h => h
+  end.
+
+Goal True.
+assert (H : forall (A: Type) (n: nat) (v : vect A n), 
+  vect_tail n v =
+  match v with
+    | nil => nil A
+    | cons x n h => h
+  end) by (intros; destruct v; reflexivity).
+eliminate_dependent_pattern_matching H.
+Abort.
+
 End example.
