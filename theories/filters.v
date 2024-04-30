@@ -4,16 +4,16 @@ From Ltac2 Require Import Ltac2 Init.
 even if the transformation is triggered *)
 
 Ltac2 Type rec filter := [
-  | FConstr (constr list) 
-  | FPred (constr -> bool)
+  | FConstr (constr list)
   | FConstrList (constr list list)
+  | FPred (constr -> bool)
   | FPredList (constr list -> bool) 
   | FConj (filter, filter) 
   | FTrivial ].
 
-Ltac2 trivial_filter := FTrivial.
-
 Ltac2 Type exn ::= [ WrongArgNumber(string) ].
+
+Ltac2 trivial_filter := FTrivial.
 
 (** [l] is the list of arguments of the tactic (returned by the interpretation
 of the trigger 
@@ -23,9 +23,11 @@ Ltac2 rec pass_the_filter
   (l : constr list)
   (f : filter) : bool :=
     match f with
-      | FConstr lc => 
-          if Int.equal (List.length l) 1 then if List.exist (Constr.equal (List.hd l)) lc then false else true
-          else Control.throw (WrongArgNumber "this filter is valid only for transformations taking one argument")
+      | FConstr lc =>
+            match l with 
+              | [] => true
+              | x :: xs => if List.exist (Constr.equal x) lc then false else pass_the_filter xs f
+            end
       | FPred p => if List.exist p l then false else true 
       | FConstrList lc => if List.exist (List.equal Constr.equal l) lc then false else true
       | FPredList p => if p l then false else true
