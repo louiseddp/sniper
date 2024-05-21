@@ -5,6 +5,9 @@ provides general proof automation.
 
 **This version is a fixed version for the PhD manuscript of Louise Dubois de Prisque**
 
+**Warning:** this version and its [counterpart without the orchestrator](https://github.com/louiseddp/sniper/tree/for-phd)
+cannot work on the same `opam` switch because they rely on different versions of `MetaCoq`, you should create two separate switches.**
+
 This plugin is an extension of [SMTCoq](https://smtcoq.github.io), a
 plugin to safely call external SMT solvers from Coq. `Sniper` extends
 SMTCoq by translating (a subset) of Coq goals into first-order logic
