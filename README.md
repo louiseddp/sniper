@@ -4,10 +4,10 @@
 provides general proof automation.
 
 **This is a version of the development of `Sniper` linked to 
-the PhD manuscript of Louise Dubois de Prisque.
+the PhD manuscript of Louise Dubois de Prisque.**
 
-Warning: this version and its [counterpart with the orchestrator](https://github.com/louiseddp/sniper/tree/for-phd-orchestrator)
-cannot work on the same `opam` switch because they rely on different versions of `MetaCoq`, you should create two separate switches.**
+**Warning:** this version and its [counterpart with the orchestrator](https://github.com/louiseddp/sniper/tree/for-phd-orchestrator)
+cannot work on the same `opam` switch because they rely on different versions of `MetaCoq`, you should create two separate switches.
 
 This plugin is an extension of [SMTCoq](https://smtcoq.github.io), a
 plugin to safely call external SMT solvers from Coq. `Sniper` extends
